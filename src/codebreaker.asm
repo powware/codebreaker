@@ -5,12 +5,12 @@ label:
     mov bp, 0x9000          ;stack at 0x9000
     mov sp, bp
 
-    mov ax, 0x0001          ;set message mode 40x25 chars
+    mov ax, 0x1          ;set message mode 40x25 chars
     int 0x10
 
     cld                     ;clear flags, so string operations add di
 
-    mov ax, 0xB800          ;message buffer at 0xB8000
+    mov ax, text_buffer          ;message buffer at text_buffer0
     mov ds, ax              ;ds and es are segment registers
     mov es, ax              ;they are shifted by half a byte
                             ;and di or si are added respectively
@@ -19,11 +19,10 @@ setup:
     call generate_code
 
     mov di, chance_count
-    mov ax, 0
+    xor ax, ax
     stosw                   ;set current chane_count to 0
 
 .screen:
-    xor ax, ax
     xor di, di
     mov cx, 1000            ;40x25 chars
     rep stosw               ;clear screen
@@ -69,7 +68,7 @@ setup:
     jmp .draw_no_border
 
 .draw_border:
-    mov ax, 0xFDB
+    mov ax, border
     stosw
 
 .draw_no_border:
@@ -82,20 +81,21 @@ setup:
 .input:
     mov di, code_input
     mov cx, code_length
-    mov ax, 0x0F5F
+    mov ax, underscore
     rep stosw
 
 .chances:
-    mov di, chances_message_position
-    add di, 20
     mov si, chance_count
     lodsw
-    mov ah, 0xF
-    add al, '1'
+    mov di, chance_count_position+4
+    mov bx, chances_char
+    xchg bx, ax
     stosw
-    add di, 2
-    mov al, '0' + chances
+    sub di, 6
+    sub ax, bx
     stosw
+    cmp bx, chances
+    je lose
 
 get_code:
     mov di, code_input
@@ -119,7 +119,7 @@ get_code:
     cmp al, '9'
     jg .loop
     
-    mov ah, 0x0F
+    mov ah, white
     stosw
 
     inc cx
@@ -129,7 +129,7 @@ get_code:
     jcxz .loop              ;dont allow backspace at the first postiion
     dec cx
     sub di, 2
-    mov ax, 0x0F5F          ;white '_'
+    mov ax, underscore
     stosw
     sub di, 2
     jmp .loop
@@ -169,8 +169,6 @@ evaluate_code:
     mov si, chance_count
     lodsw
     inc ax
-    cmp ax, chances-1
-    jg lose
     mov di, chance_count
     stosw
     jmp setup.input
@@ -186,6 +184,9 @@ win:
     jmp setup
 
 lose:
+    mov di, chance_count_position
+    mov ax, zero
+    stosw
     mov si, lose_message
     mov di, lose_message_position
     mov cx, lose_message_length
@@ -236,12 +237,12 @@ evaluate_char:
 print_string:
     mov ax, 0
     mov ds, ax
-    mov ax, 0xB800
+    mov ax, text_buffer
     mov es, ax
     mov dx, cx
     xor cx, cx
 .loop:
-    mov ah, 0xF
+    mov ah, white
     mov al, [si]
     stosw
     inc cx
@@ -250,7 +251,7 @@ print_string:
     je .end
     jmp .loop
 .end:
-    mov ax, 0xB800
+    mov ax, text_buffer
     mov ds, ax
     mov es, ax
     ret
@@ -270,16 +271,14 @@ generate_code:
     mov bx, 25173
     mul bx
     add ax, 13849
-
     push ax
 
     mov bx, 10
     xor dx, dx
     div bx  
 
-    mov al, dl
-    mov ah, 0xF
-    add al, '0'
+    mov ax, zero
+    add ax, dx
     
     push cx
     push di
@@ -305,6 +304,7 @@ generate_code:
     ret
 
 
+text_buffer equ 0xB800
 screen_width equ 80
 code equ 0x7D0
 code_length equ 6
@@ -312,7 +312,7 @@ chances equ 6
 chance_count equ 0x800
 
 code_input equ 0x29A
-code_entries equ 0x2B0
+code_entries equ 0x2B6
 
 code_pad equ 0x1A4
 code_pad_width equ 10
@@ -324,12 +324,19 @@ title_message_position equ 0x1E
 chances_message db "CHANCES: ( / )"
 chances_message_length equ $ - chances_message
 chances_message_position equ 0x1C0
+chance_count_position equ chances_message_position + 20
 win_message db "YOU ARE IN!"
 win_message_length equ $ - win_message
 win_message_position equ 0x65E
 lose_message db "YOU GOT CAUGHT!"
 lose_message_length equ $ - lose_message
 lose_message_position equ 0x65A
+
+white equ 0xF
+border equ 0xFDB
+underscore equ 0xF5F
+zero equ 0xF30
+chances_char equ zero + chances
 
 times 510 - ($ - $$) db 0
 dw 0xAA55
