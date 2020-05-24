@@ -48,11 +48,11 @@ setup:
     shl dx, 1
     add di, dx                 ;set di to point to code_pad[screen_width*cx + dx]
 
-    cmp bx, code_pad_width
+    cmp bx, code_pad_width-1
     je .draw_border
     cmp bx, 0
     je .draw_border
-    cmp cx, code_pad_width
+    cmp cx, code_pad_width-1
     je .draw_border
     jcxz .draw_border
     jmp .skip_draw_border
@@ -62,11 +62,11 @@ setup:
 .skip_draw_border:
     inc bx
     cmp bx, code_pad_width
-    jle .loop2
+    jne .loop2
 
     inc cx
     cmp cx, code_pad_width
-    jle .loop1
+    jne .loop1
 
 .input:
     mov di, code_input
@@ -278,7 +278,7 @@ generate_code:
 text_buffer equ 0xB800
 screen_width equ 80
 code equ 0x7D0
-code_length equ 6
+code_length equ 7
 chances equ 6
 chance_count equ 0x800
 
@@ -286,8 +286,8 @@ code_input equ 0x29A
 code_entries equ 0x2B6
 
 code_pad equ 0x1F6
-code_pad_width equ 9
-code_pad_height equ 4
+code_pad_width equ code_length+4
+code_pad_height equ 5
 
 title_message db "CODEBREAKER"
 title_message_length equ $ - title_message
