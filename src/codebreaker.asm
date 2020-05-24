@@ -21,7 +21,6 @@ setup:
     mov di, chance_count
     xor ax, ax
     stosw                   ;set current chance_count to 0
-
 .screen:
     xor di, di
     mov cx, 1000            ;40x25 chars
@@ -36,17 +35,11 @@ setup:
     mov di, chances_message_position
     mov cx, chances_message_length
     call print_string
-
 .code_pad:
     xor cx, cx
-
 .loop1:
-    inc cx
     xor bx, bx
-
 .loop2:
-    inc bx
-
     mov di, code_pad
     mov ax, screen_width
     mul cx
@@ -57,33 +50,29 @@ setup:
 
     cmp bx, code_pad_width
     je .draw_border
-    cmp bx, 1
+    cmp bx, 0
     je .draw_border
-
     cmp cx, code_pad_width
     je .draw_border
-    cmp cx, 1
-    je .draw_border
-
+    jcxz .draw_border
     jmp .skip_draw_border
-
 .draw_border:
     mov ax, border
     stosw
-
 .skip_draw_border:
+    inc bx
     cmp bx, code_pad_width
-    jne .loop2
+    jle .loop2
 
+    inc cx
     cmp cx, code_pad_width
-    jne .loop1
+    jle .loop1
 
 .input:
     mov di, code_input
     mov cx, code_length
     mov ax, underscore
     rep stosw
-
 .chances:
     mov si, chance_count
     lodsw
@@ -101,20 +90,16 @@ setup:
 get_code:
     mov di, code_input
     xor cx, cx
-
 .loop:
     xor ah, ah
     int 0x16                ;get key stroke as char in al
 
     cmp al, 0x8             ;backspace
     je .backspace
-
     cmp al, 0xD             ;enter
     je .enter
-
     cmp cx, code_length     ;when code has been entered
     je .loop                ;dont allow more digits
-
     cmp al, '0'             ;when key stroke is not
     jl .loop                ;a digit get new keystroke
     cmp al, '9'
@@ -125,7 +110,6 @@ get_code:
 
     inc cx
     jmp .loop
-
 .backspace: 
     jcxz .loop              ;dont allow backspace at the first postiion
     dec cx
@@ -134,7 +118,6 @@ get_code:
     stosw
     sub di, 2
     jmp .loop
-
 .enter:
     cmp cx, code_length     ;when code contains all necessary digits
     jne .loop               ;go on to evaluate the code
@@ -148,7 +131,6 @@ evaluate_code:
     add di, ax
     push di
     xor cx, cx
-
 .loop:
     push cx
     call evaluate_char
@@ -172,7 +154,6 @@ evaluate_code:
     mov di, chance_count
     stosw
     jmp setup.input
-
 
 win:
     mov si, win_message
@@ -237,11 +218,8 @@ evaluate_char:
 print_string:
     xor ax, ax
     mov ds, ax
-    mov ax, text_buffer
-    mov es, ax
     mov dx, cx
     xor cx, cx
-
 .loop:
     mov ah, white
     mov al, [si]
@@ -263,7 +241,6 @@ generate_code:
     push dx
     xor cx, cx
     mov di, code
-
 .generate_digit:
     pop ax
 
@@ -275,7 +252,6 @@ generate_code:
     mov bx, 10
     xor dx, dx
     div bx  
-
     mov ax, zero
     add ax, dx
     
@@ -288,7 +264,6 @@ generate_code:
     jcxz .save_digit
     pop cx
     jmp .generate_digit
-
 .save_digit:
     pop cx
     stosw
@@ -310,9 +285,9 @@ chance_count equ 0x800
 code_input equ 0x29A
 code_entries equ 0x2B6
 
-code_pad equ 0x1A4
-code_pad_width equ 10
-code_pad_height equ 5
+code_pad equ 0x1F6
+code_pad_width equ 9
+code_pad_height equ 4
 
 title_message db "CODEBREAKER"
 title_message_length equ $ - title_message
