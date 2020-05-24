@@ -1,16 +1,16 @@
 BITS 16                     ;16-bit real mode
 [org 0x7C00]                ;set addresses realtive to where the code got loaded
 
-label:
+start:
     mov bp, 0x9000          ;stack at 0x9000
     mov sp, bp
 
-    mov ax, 0x1          ;set message mode 40x25 chars
+    mov ax, 0x1             ;set message mode 40x25 chars
     int 0x10
 
     cld                     ;clear flags, so string operations add di
 
-    mov ax, text_buffer          ;message buffer at text_buffer0
+    mov ax, text_buffer
     mov ds, ax              ;ds and es are segment registers
     mov es, ax              ;they are shifted by half a byte
                             ;and di or si are added respectively
@@ -20,7 +20,7 @@ setup:
 
     mov di, chance_count
     xor ax, ax
-    stosw                   ;set current chane_count to 0
+    stosw                   ;set current chance_count to 0
 
 .screen:
     xor di, di
@@ -65,13 +65,13 @@ setup:
     cmp cx, 1
     je .draw_border
 
-    jmp .draw_no_border
+    jmp .skip_draw_border
 
 .draw_border:
     mov ax, border
     stosw
 
-.draw_no_border:
+.skip_draw_border:
     cmp bx, code_pad_width
     jne .loop2
 
@@ -96,6 +96,7 @@ setup:
     stosw
     cmp bx, chances
     je lose
+
 
 get_code:
     mov di, code_input
@@ -160,7 +161,6 @@ evaluate_code:
     cmp cx, code_length
     jne .loop
 
-.loop_end:
     mov si, code
     mov di, code_input
     mov cx, code_length+1
@@ -173,15 +173,13 @@ evaluate_code:
     stosw
     jmp setup.input
 
+
 win:
     mov si, win_message
     mov di, win_message_position
     mov cx, win_message_length
     call print_string
-
-    xor ah, ah
-    int 0x16
-    jmp setup
+    jmp reset
 
 lose:
     mov di, chance_count_position
@@ -192,6 +190,7 @@ lose:
     mov cx, lose_message_length
     call print_string
 
+reset:
     xor ah, ah
     int 0x16
     jmp setup
@@ -234,13 +233,15 @@ evaluate_char:
     mov bh, 0xC
     ret
 
+
 print_string:
-    mov ax, 0
+    xor ax, ax
     mov ds, ax
     mov ax, text_buffer
     mov es, ax
     mov dx, cx
     xor cx, cx
+
 .loop:
     mov ah, white
     mov al, [si]
@@ -248,9 +249,8 @@ print_string:
     inc cx
     inc si
     cmp cx, dx
-    je .end
-    jmp .loop
-.end:
+    jne .loop
+
     mov ax, text_buffer
     mov ds, ax
     mov es, ax
@@ -267,7 +267,6 @@ generate_code:
 .generate_digit:
     pop ax
 
-.linear_congurential_generator:
     mov bx, 25173
     mul bx
     add ax, 13849
@@ -285,21 +284,18 @@ generate_code:
     mov cx, code_length+1
     mov di, code
     repne scasw
-    jcxz .save_digit
     pop di
+    jcxz .save_digit
     pop cx
     jmp .generate_digit
 
 .save_digit:
-    pop di
     pop cx
     stosw
     inc cx
     cmp cx, code_length
-    je .end
-    jmp .generate_digit
+    jne .generate_digit
 
-.end:
     pop ax
     ret
 
