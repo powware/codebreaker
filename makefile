@@ -8,7 +8,12 @@ flags=-f bin -o $(bindir)$(output)
 default:
 	mkdir -p $(bindir)
 	$(compiler) $(flags) $(srcdir)$(input)
+
 run:
 	qemu-system-x86_64 $(bindir)$(output)
+
 clean:
 	rm -r $(builddir)
+
+xxd:
+	xxd $(bindir)$(output)
