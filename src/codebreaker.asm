@@ -2,8 +2,6 @@ BITS 16                     ;16-bit real mode
 [org 0x7C00]                ;set addresses realtive to where the code got loaded
 
 label:
-    jmp label
-    
     mov bp, 0x9000          ;stack at 0x9000
     mov sp, bp
 
