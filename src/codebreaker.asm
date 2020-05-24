@@ -24,16 +24,16 @@ setup:
 .screen:
     xor di, di
     mov cx, 1000            ;40x25 chars
-    rep stosw               ;clear screen
+    ;rep stosw               ;clear screen
 
     mov si, title_message
     mov di, title_message_position
-    mov cx, title_message_length
+    mov dx, title_message_length
     call print_string
 
     mov si, chances_message
     mov di, chances_message_position
-    mov cx, chances_message_length
+    mov dx, chances_message_length
     call print_string
 .code_pad:
     xor cx, cx
@@ -156,9 +156,9 @@ evaluate_code:
     jmp setup.input
 
 win:
-    mov si, win_message
+    mov si, end_message
     mov di, win_message_position
-    mov cx, win_message_length
+    mov dx, end_message_length + win_message_length
     call print_string
     jmp reset
 
@@ -166,9 +166,12 @@ lose:
     mov di, chance_count_position
     mov ax, zero
     stosw
-    mov si, lose_message
+    mov si, end_message
     mov di, lose_message_position
-    mov cx, lose_message_length
+    mov dx, end_message_length
+    call print_string
+    mov si, lose_message
+    mov dx, lose_message_length
     call print_string
 
 reset:
@@ -216,10 +219,8 @@ evaluate_char:
 
 
 print_string:
-    xor ax, ax
-    mov ds, ax
-    mov dx, cx
     xor cx, cx
+    mov ds, cx
 .loop:
     mov ah, white
     mov al, [si]
@@ -231,7 +232,6 @@ print_string:
 
     mov ax, text_buffer
     mov ds, ax
-    mov es, ax
     ret
 
 
@@ -277,9 +277,9 @@ generate_code:
 
 text_buffer equ 0xB800
 screen_width equ 80
-code equ 0x7D0
+code equ 0;0x7D0
 code_length equ 7
-chances equ 6
+chances equ 1
 chance_count equ 0x800
 
 code_input equ 0x29A
@@ -296,10 +296,12 @@ chances_message db "CHANCES: ( / )"
 chances_message_length equ $ - chances_message
 chances_message_position equ 0x1C0
 chance_count_position equ chances_message_position + 20
-win_message db "YOU ARE IN!"
+end_message db "YOU "
+end_message_length equ $ - end_message
+win_message db "WIN"
 win_message_length equ $ - win_message
 win_message_position equ 0x65E
-lose_message db "YOU GOT CAUGHT!"
+lose_message db "LOSE"
 lose_message_length equ $ - lose_message
 lose_message_position equ 0x65A
 
