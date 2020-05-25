@@ -10,31 +10,24 @@ start:
 
     cld                     ;clear flags, so string operations add di
 
-    mov ax, text_buffer
-    mov ds, ax              ;ds and es are segment registers
-    mov es, ax              ;they are shifted by half a byte
+    mov bx, text_buffer
+    mov ds, bx              ;ds and es are segment registers
+    mov es, bx              ;they are shifted by half a byte
                             ;and di or si are added respectively
-                            ;for string operations
-setup: 
-    call generate_code
-
-    mov di, chance_count
-    xor ax, ax
-    stosw                   ;set current chance_count to 0
     xor bx, bx
-.screen:
+setup: 
     xor ax, ax
     xor di, di
     mov cx, 1000            ;40x25 chars
     rep stosw               ;clear screen
-
+    xor ax, ax
     mov si, title_message
     mov di, code_input
-    mov cx, code_message_length
+    mov cl, code_message_length
     cmp bl, 0xD 
     jne .code_length
     mov di, title_message_position
-    mov cx, title_message_length
+    mov cl, title_message_length
 .code_length:
     call print_string
     cmp bl, 0xD 
@@ -42,12 +35,59 @@ setup:
     xor ah, ah
     int 0x16
     mov bl, al
-    jmp .screen
+    jmp setup
 .skip_code_length:
+    mov di, code_length_pos
+    mov ah, 0xF
+    mov al, '0'
+    ;xor al, al
+    stosw                   ;set current chance_count to 0
+
+.generate_code:
+    xor ax, ax
+    int 0x1A
+    push dx
+    xor cx, cx
+    mov di, code
+.generate_digit:
+    pop ax
+
+    mov bx, 25173
+    mul bx
+    add ax, 13849
+    push ax
+
+    mov bx, 10
+    xor dx, dx
+    div bx  
+    mov ax, zero
+    add ax, dx
+    
+    push cx
+    push di
+    mov cl, max_code_length+1
+    mov di, code
+    repne scasw
+    pop di
+    jcxz .save_digit
+    pop cx
+    jmp .generate_digit
+.save_digit:
+    pop cx
+    stosw
+    inc cx
+    mov si, code_length_pos
+    lodsb
+    cmp cl, al
+    jne .generate_digit
+
+    pop ax
+
     mov si, chances_message
     mov di, chances_message_position
-    mov cx, chances_message_length
+    mov cl, chances_message_length
     call print_string
+
 .code_pad:
     xor cx, cx
 .loop1:
@@ -82,13 +122,15 @@ setup:
     jne .loop1
 
 .input:
+    mov si, code_length_pos
+    lodsb
     mov di, code_input
-    mov cx, code_length
+    xchg cx, ax
     mov ax, underscore
     rep stosw
+
 .chances:
-    mov si, chance_count
-    lodsw
+    lodsb
     mov di, chance_count_position+4
     mov bx, chances_char
     xchg bx, ax
@@ -243,52 +285,14 @@ print_string:
     ret
 
 
-generate_code:
-    xor ax, ax
-    int 0x1A
-    push dx
-    xor cx, cx
-    mov di, code
-.generate_digit:
-    pop ax
-
-    mov bx, 25173
-    mul bx
-    add ax, 13849
-    push ax
-
-    mov bx, 10
-    xor dx, dx
-    div bx  
-    mov ax, zero
-    add ax, dx
-    
-    push cx
-    push di
-    mov cx, code_length+1
-    mov di, code
-    repne scasw
-    pop di
-    jcxz .save_digit
-    pop cx
-    jmp .generate_digit
-.save_digit:
-    pop cx
-    stosw
-    inc cx
-    cmp cx, code_length
-    jne .generate_digit
-
-    pop ax
-    ret
-
-
 text_buffer equ 0xB800
 screen_width equ 80
-code equ 0x7D0
-code_length equ 7
+code_length_pos equ 0;0x7D0
+chance_count equ code_length_pos+1
+code equ code_length_pos+2
+max_code_length equ 8
+code_length equ 5
 chances equ 6
-chance_count equ 0x800
 
 code_input equ 0x29A
 code_entries equ 0x2B6
