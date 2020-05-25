@@ -22,18 +22,19 @@ setup:
     xor ax, ax
     stosw                   ;set current chance_count to 0
 .screen:
+    xor ax, ax
     xor di, di
     mov cx, 1000            ;40x25 chars
-    ;rep stosw               ;clear screen
+    rep stosw               ;clear screen
 
     mov si, title_message
     mov di, title_message_position
-    mov dx, title_message_length
+    mov cx, title_message_length
     call print_string
 
     mov si, chances_message
     mov di, chances_message_position
-    mov dx, chances_message_length
+    mov cx, chances_message_length
     call print_string
 .code_pad:
     xor cx, cx
@@ -156,9 +157,9 @@ evaluate_code:
     jmp setup.input
 
 win:
-    mov si, end_message
+    mov si, win_message
     mov di, win_message_position
-    mov dx, end_message_length + win_message_length
+    mov cx, win_message_length
     call print_string
     jmp reset
 
@@ -171,7 +172,8 @@ lose:
     mov dx, end_message_length
     call print_string
     mov si, lose_message
-    mov dx, lose_message_length
+    mov di, lose_message_position
+    mov cx, lose_message_length
     call print_string
 
 reset:
@@ -219,16 +221,14 @@ evaluate_char:
 
 
 print_string:
-    xor cx, cx
-    mov ds, cx
+    xor ax, ax
+    mov ds, ax
 .loop:
     mov ah, white
     mov al, [si]
     stosw
-    inc cx
     inc si
-    cmp cx, dx
-    jne .loop
+    loop .loop
 
     mov ax, text_buffer
     mov ds, ax
@@ -277,9 +277,9 @@ generate_code:
 
 text_buffer equ 0xB800
 screen_width equ 80
-code equ 0;0x7D0
+code equ 0x7D0
 code_length equ 7
-chances equ 1
+chances equ 6
 chance_count equ 0x800
 
 code_input equ 0x29A
@@ -292,16 +292,15 @@ code_pad_height equ 5
 title_message db "CODEBREAKER"
 title_message_length equ $ - title_message
 title_message_position equ 0x1E
+code_message_length equ 4
 chances_message db "CHANCES: ( / )"
 chances_message_length equ $ - chances_message
 chances_message_position equ 0x1C0
 chance_count_position equ chances_message_position + 20
-end_message db "YOU "
-end_message_length equ $ - end_message
-win_message db "WIN"
+win_message db "YOU WIN"
 win_message_length equ $ - win_message
 win_message_position equ 0x65E
-lose_message db "LOSE"
+lose_message db "YOU LOSE"
 lose_message_length equ $ - lose_message
 lose_message_position equ 0x65A
 
