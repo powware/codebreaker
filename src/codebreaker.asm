@@ -16,16 +16,49 @@ start:
                             ;and di or si are added respectively
                             ;for string operations
 setup: 
-    call generate_code
-
     mov di, chance_count
     xor ax, ax
-    stosw                   ;set current chance_count to 0
+    stosw
+.generate_code:
+    int 0x1A
+    push dx
+    mov cx, code_length
+
+.generate_digit:
+    pop ax
+
+    mov bx, 25173
+    mul bx
+    add ax, 13849
+    push ax
+
+    mov bx, 10
+    xor dx, dx
+    div bx  
+    mov ax, zero
+    add ax, dx
+    
+    push cx
+    push di
+    mov cx, code_length+1
+    mov di, code
+    repne scasw
+    pop di
+    jcxz .save_digit
+    pop cx
+    jmp .generate_digit
+.save_digit:
+    pop cx
+    stosw
+    loop .generate_digit
+
+    pop ax
+
 .screen:
     xor ax, ax
     xor di, di
     mov cx, 1000            ;40x25 chars
-    rep stosw               ;clear screen
+    ;rep stosw               ;clear screen
 
     mov si, title_message
     mov di, title_message_position
@@ -167,12 +200,11 @@ lose:
     mov di, chance_count_position
     mov ax, zero
     stosw
-    mov si, end_message
+    mov si, win_message
     mov di, lose_message_position
-    mov dx, end_message_length
+    mov cx, you_message_length
     call print_string
     mov si, lose_message
-    mov di, lose_message_position
     mov cx, lose_message_length
     call print_string
 
@@ -235,52 +267,12 @@ print_string:
     ret
 
 
-generate_code:
-    xor ax, ax
-    int 0x1A
-    push dx
-    xor cx, cx
-    mov di, code
-.generate_digit:
-    pop ax
-
-    mov bx, 25173
-    mul bx
-    add ax, 13849
-    push ax
-
-    mov bx, 10
-    xor dx, dx
-    div bx  
-    mov ax, zero
-    add ax, dx
-    
-    push cx
-    push di
-    mov cx, code_length+1
-    mov di, code
-    repne scasw
-    pop di
-    jcxz .save_digit
-    pop cx
-    jmp .generate_digit
-.save_digit:
-    pop cx
-    stosw
-    inc cx
-    cmp cx, code_length
-    jne .generate_digit
-
-    pop ax
-    ret
-
-
 text_buffer equ 0xB800
 screen_width equ 80
-code equ 0x7D0
+chance_count equ 0;x7D0
+code equ chance_count+2
 code_length equ 7
 chances equ 6
-chance_count equ 0x800
 
 code_input equ 0x29A
 code_entries equ 0x2B6
@@ -297,10 +289,11 @@ chances_message db "CHANCES: ( / )"
 chances_message_length equ $ - chances_message
 chances_message_position equ 0x1C0
 chance_count_position equ chances_message_position + 20
-win_message db "YOU WIN"
+win_message db "YOU ARE IN!"
 win_message_length equ $ - win_message
 win_message_position equ 0x65E
-lose_message db "YOU LOSE"
+you_message_length equ 4
+lose_message db "GOT CAUGHT!"
 lose_message_length equ $ - lose_message
 lose_message_position equ 0x65A
 
