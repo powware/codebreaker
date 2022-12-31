@@ -1,5 +1,5 @@
 ## Codebreaker
-A number based bootsector game (contained fully within 512 Bytes) written in x86 assembly (Intel syntax) targeting 16-bit real mode.
+A number based bootsector game (446 bytes of bootable code within an MBR) written in x86 assembly (Intel syntax) targeting 16-bit real mode on legacy BIOS.
 
 ![](codebreaker.png)
 
