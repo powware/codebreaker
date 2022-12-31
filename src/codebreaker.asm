@@ -15,13 +15,24 @@ start:
     mov es, ax              ;they are shifted by half a byte
                             ;and di or si are added respectively
                             ;for string operations
-setup: 
-    mov di, chance_count
+Setup:
     xor ax, ax
-    stosw
-.generate_code:
+    xor di, di
+    mov cx, 1000            ;40x25 chars
+    rep stosw               ;clear screen
+
+    mov si, title_message
+    mov di, title_message_position
+    call PrintString
+
+    mov si, chances_message
+    mov di, chances_message_position
+    call PrintString
+
+GenerateCode:
     int 0x1A
     push dx
+    mov di, code
     mov cx, code_length
 
 .generate_digit:
@@ -34,10 +45,10 @@ setup:
 
     mov bx, 10
     xor dx, dx
-    div bx  
+    div bx
     mov ax, zero
     add ax, dx
-    
+
     push cx
     push di
     mov cx, code_length+1
@@ -54,74 +65,30 @@ setup:
 
     pop ax
 
-.screen:
-    xor ax, ax
-    xor di, di
-    mov cx, 1000            ;40x25 chars
-    ;rep stosw               ;clear screen
-
-    mov si, title_message
-    mov di, title_message_position
-    mov cx, title_message_length
-    call print_string
-
-    mov si, chances_message
-    mov di, chances_message_position
-    mov cx, chances_message_length
-    call print_string
-.code_pad:
-    xor cx, cx
-.loop1:
+SetupCodePad:
     xor bx, bx
-.loop2:
+.loop:
     mov di, code_pad
     mov ax, screen_width
-    mul cx
+    mul bx
     add di, ax
-    mov dx, bx
-    shl dx, 1
-    add di, dx                 ;set di to point to code_pad[screen_width*cx + dx]
-
-    cmp bx, code_pad_width-1
-    je .draw_border
-    cmp bx, 0
-    je .draw_border
-    cmp cx, code_pad_width-1
-    je .draw_border
-    jcxz .draw_border
-    jmp .skip_draw_border
-.draw_border:
+    mov dx, code_pad_width
+    mov cx, dx
     mov ax, border
-    stosw
-.skip_draw_border:
-    inc bx
-    cmp bx, code_pad_width
-    jne .loop2
+    rep stosw
 
-    inc cx
-    cmp cx, code_pad_width
-    jne .loop1
+    inc bx
+    cmp bx, dx
+    jb .loop
 
 .input:
     mov di, code_input
     mov cx, code_length
     mov ax, underscore
     rep stosw
-.chances:
-    mov si, chance_count
-    lodsw
-    mov di, chance_count_position+4
-    mov bx, chances_char
-    xchg bx, ax
-    stosw
-    sub di, 6
-    sub ax, bx
-    stosw
-    cmp bx, chances
-    je lose
 
 
-get_code:
+GetCode:
     mov di, code_input
     xor cx, cx
 .loop:
@@ -138,13 +105,13 @@ get_code:
     jl .loop                ;a digit get new keystroke
     cmp al, '9'
     jg .loop
-    
+
     mov ah, white
     stosw
 
     inc cx
     jmp .loop
-.backspace: 
+.backspace:
     jcxz .loop              ;dont allow backspace at the first postiion
     dec cx
     sub di, 2
@@ -156,10 +123,11 @@ get_code:
     cmp cx, code_length     ;when code contains all necessary digits
     jne .loop               ;go on to evaluate the code
 
-evaluate_code:
+EvaluateCode:
     mov di, code_entries
-    mov si, chance_count
-    lodsw
+    mov ax, [max_chances]
+    mov cx, [chances]
+    sub ax, cx
     mov dx, screen_width
     mul dx
     add di, ax
@@ -167,11 +135,11 @@ evaluate_code:
     xor cx, cx
 .loop:
     push cx
-    call evaluate_char
+    call EvaluateChar
     pop cx
-    mov ax, bx              ;bx has char from evaluate_char
+    mov ax, bx              ;bx has char from EvaluateChar
     mov dx, cx
-    stosw 
+    stosw
 
     inc cx
     cmp cx, code_length
@@ -181,40 +149,35 @@ evaluate_code:
     mov di, code_input
     mov cx, code_length+1
     repe cmpsw
-    jcxz win
-    mov si, chance_count
-    lodsw
-    inc ax
-    mov di, chance_count
-    stosw
-    jmp setup.input
+    jcxz Win
+    mov cx, [chances]
+    dec cx
+    mov [chances], cx
+    sub cx, zero
+    jcxz Loss
+    jmp SetupCodePad.input
 
-win:
+Win:
     mov si, win_message
     mov di, win_message_position
-    mov cx, win_message_length
-    call print_string
-    jmp reset
+    call PrintString
+    jmp WaitForReset
 
-lose:
-    mov di, chance_count_position
-    mov ax, zero
-    stosw
+Loss:
     mov si, win_message
     mov di, lose_message_position
-    mov cx, you_message_length
-    call print_string
+    call PrintString
     mov si, lose_message
-    mov cx, lose_message_length
-    call print_string
+    mov di, lose_message_position+8
+    call PrintString
 
-reset:
+WaitForReset:
     xor ah, ah
     int 0x16
-    jmp setup
+    jmp Setup
 
 
-evaluate_char:
+EvaluateChar:
     mov si, code_input
     shl cx, 1
     add si, cx
@@ -251,28 +214,32 @@ evaluate_char:
     mov bh, 0xC
     ret
 
-
-print_string:
+; si: source
+; di: destination
+PrintString:
+    push ax
     xor ax, ax
     mov ds, ax
-.loop:
     mov ah, white
-    mov al, [si]
-    stosw
-    inc si
-    loop .loop
 
+.print_char:
+    lodsb
+    or al, al
+    jz .return
+    stosw
+    jmp .print_char
+
+.return:
     mov ax, text_buffer
     mov ds, ax
+    pop ax
     ret
 
 
 text_buffer equ 0xB800
 screen_width equ 80
-chance_count equ 0;x7D0
-code equ chance_count+2
+code equ 0x7D0
 code_length equ 7
-chances equ 6
 
 code_input equ 0x29A
 code_entries equ 0x2B6
@@ -281,27 +248,25 @@ code_pad equ 0x1F6
 code_pad_width equ code_length+4
 code_pad_height equ 5
 
-title_message db "CODEBREAKER"
-title_message_length equ $ - title_message
+title_message db "CODEBREAKER", 0
 title_message_position equ 0x1E
-code_message_length equ 4
-chances_message db "CHANCES: ( / )"
-chances_message_length equ $ - chances_message
+
+chances_message db "CHANCES: (4/4)", 0
 chances_message_position equ 0x1C0
-chance_count_position equ chances_message_position + 20
-win_message db "YOU ARE IN!"
-win_message_length equ $ - win_message
+chances equ chances_message_position + 20
+max_chances equ chances_message_position + 24
+
+win_message db "YOU ARE IN!", 0
 win_message_position equ 0x65E
-you_message_length equ 4
-lose_message db "GOT CAUGHT!"
-lose_message_length equ $ - lose_message
+
+lose_message db "GOT CAUGHT!", 0
 lose_message_position equ 0x65A
 
 white equ 0xF
-border equ 0xFDB
+border equ 0x7DB
 underscore equ 0xF5F
 zero equ 0xF30
-chances_char equ zero + chances
 
-times 510 - ($ - $$) db 0
-dw 0xAA55
+padding times 446 - ($ - $$) db 0
+mbr times 510 - 446 db 0xFF
+boot_signature dw 0xAA55
