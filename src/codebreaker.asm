@@ -246,7 +246,6 @@ code_entries equ 0x2B6
 
 code_pad equ 0x1F6
 code_pad_width equ code_length+4
-code_pad_height equ 5
 
 title_message db "CODEBREAKER", 0
 title_message_position equ 0x1E

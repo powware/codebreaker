@@ -30,5 +30,5 @@ In other words: you want your code to evaluate to all digits as green. Whether y
 At present the code length and amount of chanes are hard coded. You can change these values and rebuild for a different gameplay experience:
 ```asm
 code_length equ 7
-chances equ 4
+chances_message db "CHANCES: (4/4)", 0
 ```
