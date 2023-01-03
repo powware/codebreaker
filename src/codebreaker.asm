@@ -266,6 +266,6 @@ border equ 0x7DB
 underscore equ 0xF5F
 zero equ 0xF30
 
-padding times 446 - ($ - $$) db 0
-mbr times 510 - 446 db 0xFF
+padding times 446 - ($ - $$) db 0xF4
+mbr times 510 - 446 db 0
 boot_signature dw 0xAA55
