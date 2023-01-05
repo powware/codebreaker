@@ -266,6 +266,7 @@ border equ 0x7DB
 underscore equ 0xF5F
 zero equ 0xF30
 
-padding times 446 - ($ - $$) db 0xF4
-mbr times 510 - 446 db 0
+end_of_asm equ 440
+padding times end_of_asm - ($ - $$) db 0xF4
+partition_table times 510 - end_of_asm db 0
 boot_signature dw 0xAA55
