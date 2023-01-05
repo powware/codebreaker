@@ -20,3 +20,5 @@ xxd:
 install:
 	dd if=$(builddir)$(output) of=$(device) bs=446 count=1 oflag=sync
 	dd if=$(builddir)$(output) of=$(device) bs=1 count=2 seek=510 skip=510 oflag=sync
+	sync
+	eject $(device)
